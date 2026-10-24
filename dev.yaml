@@ -1,0 +1,51 @@
+
+name: Docker Dev CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  docker-test:
+    name: Validate and Test Docker App
+    runs-on: ubuntu-latest
+
+    env:
+      APP_NAME: Docker-CI-CD
+      APP_PORT: "3000"
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Check Docker Version
+        run: docker --version
+
+      - name: Validate Docker Compose
+        run: docker compose -f compose.yaml config
+
+      - name: Start Application
+        run: docker compose -f compose.yaml up -d
+
+      - name: Test Application
+        run: |
+          for i in {1..12}; do
+            if curl --fail http://localhost:3000/; then
+              echo "Application test passed"
+              exit 0
+            fi
+            echo "Waiting for application..."
+            sleep 5
+          done
+          echo "Application test failed"
+          docker compose -f compose.yaml logs
+          exit 1
+
+      - name: Stop Application
+        if: always()
+        run: docker compose -f compose.yaml down
